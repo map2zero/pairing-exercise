@@ -124,7 +124,7 @@ object Fixtures {
                 "    \"state\": \"\",\n" +
                 "    \"city\": \"Cetinje\",\n" +
                 "    \"zip_code\": \"80150\",\n" +
-                "    \"street\": \"Ulica 1\",\n" +
+                "    \"street\": \"Ulica 1\"\n" +
                 "  }\n" +
                 "}"
     }

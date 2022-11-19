@@ -129,32 +129,35 @@ class OrganisationRepository {
         return keyHolder.getKeyAs(UUID::class.java)!!
     }
 
-    private fun organisationQuery() = "select " +
-            "o.id as id, " +
-            "o.name as name, " +
-            "o.date_founded as date_founded, " +
-            "o.country_code as country_code, " +
-            "c.id as country_id, " +
-            "c.name as country_name, " +
-            "o.VAT_number as VAT_number, " +
-            "o.registration_number as registration_number," +
-            "o.legal_entity_type as legal_entity_type," +
-            "o.contact_details_id as contact_details_id, " +
-            "o.address_details_id as address_details_id, " +
-            "cd.phone_number as phone_number, " +
-            "cd.fax as fax, " +
-            "cd.email as email " +
-            "cta.country_code as adr_country_code " +
-            "ad.state as adr_state " +
-            "cta.name as adr_city " +
-            "ad.zip_code as adr_zip_code " +
-            "ad.street as adr_street " +
-            "from " +
-            "organisations_schema.organisations o " +
-            "INNER JOIN organisations_schema.contact_details cd on o.contact_details_id::uuid = cd.id::uuid " +
-            "INNER JOIN organisations_schema.address_details ad on o.address_details_id::uuid = ad.id::uuid " +
-            "INNER JOIN organisations_schema.cities cta on ad.country_code = cta.country_code and ad.city = cta.name " +
-            "INNER JOIN organisations_schema.countries c on o.country_code = c.country_code "
+    private fun organisationQuery() =
+        """
+            select
+                o.id as id,
+                o.name as name,
+                o.date_founded as date_founded,
+                o.country_code as country_code,
+                c.id as country_id,
+                c.name as country_name,
+                o.VAT_number as VAT_number,
+                o.registration_number as registration_number,
+                o.legal_entity_type as legal_entity_type,
+                o.contact_details_id as contact_details_id,
+                o.address_details_id as address_details_id,
+                cd.phone_number as phone_number,
+                cd.fax as fax,
+                cd.email as email,
+                cta.country_code as adr_country_code,
+                ad.state as adr_state,
+                cta.name as adr_city,
+                ad.zip_code as adr_zip_code,
+                ad.street as adr_street
+            from
+                organisations_schema.organisations o
+                INNER JOIN organisations_schema.contact_details cd on o.contact_details_id::uuid = cd.id::uuid
+                INNER JOIN organisations_schema.address_details ad on o.address_details_id::uuid = ad.id::uuid
+                INNER JOIN organisations_schema.cities cta on ad.country_code = cta.country_code and ad.city = cta.name
+                INNER JOIN organisations_schema.countries c on o.country_code = c.country_code
+        """.trimIndent()
 
     private fun organisationMapper() = RowMapper<OrganisationResponse> { it: ResultSet, _: Int ->
         OrganisationResponse(
