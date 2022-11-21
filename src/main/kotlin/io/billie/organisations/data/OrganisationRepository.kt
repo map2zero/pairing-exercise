@@ -28,11 +28,12 @@ class OrganisationRepository {
 
     @Transactional
     fun create(organisation: OrganisationRequest): UUID {
-        if(!valuesValid(organisation)) {
+        if (!valuesValid(organisation)) {
             throw UnableToFindCountry(organisation.countryCode)
         }
-        val id: UUID = createContactDetails(organisation.contactDetails)
-        return createOrganisation(organisation, id)
+        val contactDetailsId: UUID = createContactDetails(organisation.contactDetails)
+        val addressDetailsId: UUID = createAddressDetails(organisation.addressDetails)
+        return createOrganisation(organisation, contactDetailsId, addressDetailsId)
     }
 
     private fun valuesValid(organisation: OrganisationRequest): Boolean {
@@ -47,7 +48,7 @@ class OrganisationRepository {
         return (reply != null) && (reply > 0)
     }
 
-    private fun createOrganisation(org: OrganisationRequest, contactDetailsId: UUID): UUID {
+    private fun createOrganisation(org: OrganisationRequest, contactDetailsId: UUID, addressDetailsId: UUID): UUID {
         val keyHolder: KeyHolder = GeneratedKeyHolder()
         jdbcTemplate.update(
             { connection ->
@@ -59,8 +60,9 @@ class OrganisationRepository {
                             "vat_number, " +
                             "registration_number, " +
                             "legal_entity_type, " +
-                            "contact_details_id" +
-                            ") VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            "contact_details_id," +
+                            "address_details_id" +
+                            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     arrayOf("id")
                 )
                 ps.setString(1, org.name)
@@ -70,6 +72,7 @@ class OrganisationRepository {
                 ps.setString(5, org.registrationNumber)
                 ps.setString(6, org.legalEntityType.toString())
                 ps.setObject(7, contactDetailsId)
+                ps.setObject(8, addressDetailsId)
                 ps
             }, keyHolder
         )
@@ -99,24 +102,62 @@ class OrganisationRepository {
         return keyHolder.getKeyAs(UUID::class.java)!!
     }
 
-    private fun organisationQuery() = "select " +
-            "o.id as id, " +
-            "o.name as name, " +
-            "o.date_founded as date_founded, " +
-            "o.country_code as country_code, " +
-            "c.id as country_id, " +
-            "c.name as country_name, " +
-            "o.VAT_number as VAT_number, " +
-            "o.registration_number as registration_number," +
-            "o.legal_entity_type as legal_entity_type," +
-            "o.contact_details_id as contact_details_id, " +
-            "cd.phone_number as phone_number, " +
-            "cd.fax as fax, " +
-            "cd.email as email " +
-            "from " +
-            "organisations_schema.organisations o " +
-            "INNER JOIN organisations_schema.contact_details cd on o.contact_details_id::uuid = cd.id::uuid " +
-            "INNER JOIN organisations_schema.countries c on o.country_code = c.country_code "
+    private fun createAddressDetails(addressDetails: AddressDetailsRequest): UUID {
+        val keyHolder: KeyHolder = GeneratedKeyHolder()
+        jdbcTemplate.update(
+            { connection ->
+                val ps = connection.prepareStatement(
+                    "insert into organisations_schema.address_details " +
+                            "(" +
+                            "country_code, " +
+                            "state, " +
+                            "city," +
+                            "zip_code," +
+                            "street" +
+                            ") values(?,?,?,?,?)",
+                    arrayOf("id")
+                )
+                ps.setString(1, addressDetails.countryCode)
+                ps.setString(2, addressDetails.state)
+                ps.setString(3, addressDetails.city)
+                ps.setString(4, addressDetails.zipCode)
+                ps.setString(5, addressDetails.street)
+                ps
+            },
+            keyHolder
+        )
+        return keyHolder.getKeyAs(UUID::class.java)!!
+    }
+
+    private fun organisationQuery() =
+        """
+            select
+                o.id as id,
+                o.name as name,
+                o.date_founded as date_founded,
+                o.country_code as country_code,
+                c.id as country_id,
+                c.name as country_name,
+                o.VAT_number as VAT_number,
+                o.registration_number as registration_number,
+                o.legal_entity_type as legal_entity_type,
+                o.contact_details_id as contact_details_id,
+                o.address_details_id as address_details_id,
+                cd.phone_number as phone_number,
+                cd.fax as fax,
+                cd.email as email,
+                cta.country_code as adr_country_code,
+                ad.state as adr_state,
+                cta.name as adr_city,
+                ad.zip_code as adr_zip_code,
+                ad.street as adr_street
+            from
+                organisations_schema.organisations o
+                INNER JOIN organisations_schema.contact_details cd on o.contact_details_id::uuid = cd.id::uuid
+                INNER JOIN organisations_schema.address_details ad on o.address_details_id::uuid = ad.id::uuid
+                INNER JOIN organisations_schema.cities cta on ad.country_code = cta.country_code and ad.city = cta.name
+                INNER JOIN organisations_schema.countries c on o.country_code = c.country_code
+        """.trimIndent()
 
     private fun organisationMapper() = RowMapper<OrganisationResponse> { it: ResultSet, _: Int ->
         OrganisationResponse(
@@ -137,6 +178,17 @@ class OrganisationRepository {
             it.getString("phone_number"),
             it.getString("fax"),
             it.getString("email")
+        )
+    }
+
+    private fun mapAddressDetails(it: ResultSet): AddressDetails {
+        return AddressDetails(
+            UUID.fromString(it.getString("address_details_id")),
+            it.getString("adr_country_code"),
+            it.getString("adr_state"),
+            it.getString("adr_city"),
+            it.getString("adr_zip_code"),
+            it.getString("adr_street"),
         )
     }
 
